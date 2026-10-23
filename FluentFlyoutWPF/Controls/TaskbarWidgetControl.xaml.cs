@@ -179,6 +179,8 @@ public partial class TaskbarWidgetControl : UserControl
     {
         if (string.IsNullOrEmpty(SongTitle.Text + SongArtist.Text)) return;
 
+        RefreshAppVolumeTooltip();
+
         SolidColorBrush targetBackgroundBrush;
         // hover effects with animations, hard-coded colors because I can't find the resource brushes
         WindowsThemeDetector.GetWindowsTheme(out _, out var systemTheme);
@@ -251,7 +253,7 @@ public partial class TaskbarWidgetControl : UserControl
         if (_mainWindow == null) return;
 
         // toggle main flyout when clicked
-        _mainWindow.ShowMediaFlyout(toggleMode: true, forceShow: true);
+        _mainWindow.ShowMediaFlyout(toggleMode: true, forceShow: true, withVolume: true);
     }
 
     private void MainBorder_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -571,7 +573,7 @@ public partial class TaskbarWidgetControl : UserControl
         Dispatcher.Invoke(() =>
         {
             string newTitle = !string.IsNullOrEmpty(title) ? title : "-";
-            string newArtist = !string.IsNullOrEmpty(artist) ? artist : "-";
+            string newArtist = artist ?? string.Empty;
 
             if (_actualTitle != newTitle || _actualArtist != newArtist)
             {
@@ -632,7 +634,7 @@ public partial class TaskbarWidgetControl : UserControl
             }
 
             SongTitle.Visibility = Visibility.Visible;
-            SongArtistContainer.Visibility = !_isSmallTaskbar && !_isVertical && !string.IsNullOrEmpty(artist)
+            SongArtistContainer.Visibility = !_isSmallTaskbar && !_isVertical && !string.IsNullOrEmpty(_actualArtist)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             SongInfoStackPanel.Visibility = _isVertical ? Visibility.Collapsed : Visibility.Visible;
@@ -732,6 +734,11 @@ public partial class TaskbarWidgetControl : UserControl
         if (_mainWindow == null) return;
 
         _ = _mainWindow.TryOpenMediaPlayerAsync();
+    }
+
+    private void TaskbarContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        _mainWindow?.PopulateSessionSwitcherMenu(ContextMenuSessionSwitcher);
     }
 
     private void ContextMenuSettings_Click(object sender, RoutedEventArgs e)

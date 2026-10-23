@@ -33,6 +33,36 @@ public partial class UserSettings : ObservableObject
     ];
 
     /// <summary>
+    /// Saved width of the settings window
+    /// </summary>
+    [ObservableProperty]
+    public partial double SettingsWindowWidth { get; set; }
+
+    /// <summary>
+    /// Saved height of the settings window
+    /// </summary>
+    [ObservableProperty]
+    public partial double SettingsWindowHeight { get; set; }
+
+    /// <summary>
+    /// Saved horizontal position of the settings window
+    /// </summary>
+    [ObservableProperty]
+    public partial double SettingsWindowLeft { get; set; }
+
+    /// <summary>
+    /// Saved vertical position of the settings window
+    /// </summary>
+    [ObservableProperty]
+    public partial double SettingsWindowTop { get; set; }
+
+    /// <summary>
+    /// Saved window state of the settings window
+    /// </summary>
+    [ObservableProperty]
+    public partial WindowState SettingsWindowState { get; set; }
+
+    /// <summary>
     /// Use a compact layout
     /// </summary>
     [ObservableProperty]
@@ -289,6 +319,9 @@ public partial class UserSettings : ObservableObject
     /// </summary>
     [ObservableProperty]
     public partial bool PauseOtherSessionsEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial string PinnedSessionId { get; set; }
 
     /// <summary>
     /// Enable subtle animations for the lock keys flyout indicator
@@ -592,6 +625,9 @@ public partial class UserSettings : ObservableObject
     public partial bool VolumeControlEnabled { get; set; }
 
     [ObservableProperty]
+    public partial bool VolumeFlyoutShortcutEnabled { get; set; }
+
+    [ObservableProperty]
     public partial bool VolumeControlAboveMediaFlyout { get; set; }
 
     [ObservableProperty]
@@ -716,6 +752,11 @@ public partial class UserSettings : ObservableObject
         NextUpDuration = 2000;
         NIconLeftClick = 0;
         CenterTitleArtist = false;
+        SettingsWindowWidth = 900;
+        SettingsWindowHeight = 700;
+        SettingsWindowLeft = double.NaN;
+        SettingsWindowTop = double.NaN;
+        SettingsWindowState = WindowState.Normal;
         FlyoutAnimationEasingStyle = 2;
         LockKeysEnabled = true;
         LockKeysCapsEnabled = true;
@@ -734,6 +775,7 @@ public partial class UserSettings : ObservableObject
         LastKnownVersion = string.Empty;
         SeekbarEnabled = false;
         PauseOtherSessionsEnabled = false;
+        PinnedSessionId = string.Empty;
         LockKeysAnimated = true;
         LockKeysInsertEnabled = true;
         MediaFlyoutBackgroundBlur = 0;
@@ -772,6 +814,7 @@ public partial class UserSettings : ObservableObject
         TaskbarVisualizerAudioPeakLevel = 3;
         TaskbarVisualizerBaselineAutoHide = false;
         VolumeControlEnabled = false;
+        VolumeFlyoutShortcutEnabled = true;
         VolumeControlAboveMediaFlyout = false;
         VolumeControlDuration = 3000;
         VolumeMixerEnabled = false;
