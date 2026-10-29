@@ -1,0 +1,98 @@
+name: Mirror upstream FluentFlyout releases
+
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: mirror-upstream-release
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check latest stable upstream release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/unchihugo/FluentFlyout/releases/latest > "$RUNNER_TEMP/upstream-release.json"
+          tag="$(jq -r '.tag_name' "$RUNNER_TEMP/upstream-release.json")"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected upstream release tag: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" > "$RUNNER_TEMP/fork-release.json" 2> "$RUNNER_TEMP/release-error.txt"; then
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+            if jq -e '.assets[]? | select(.name | endswith("_x64.exe"))' "$RUNNER_TEMP/fork-release.json" > /dev/null; then
+              echo "Release $tag already has an x64 EXE. Nothing to do."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Release $tag exists but has no EXE; rebuilding."
+            fi
+          else
+            if ! grep -q 'HTTP 404' "$RUNNER_TEMP/release-error.txt"; then
+              cat "$RUNNER_TEMP/release-error.txt" >&2
+              exit 1
+            fi
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+            echo "New upstream release found: $tag"
+          fi
+
+      - name: Pull upstream into master and mirror tag
+        if: steps.check.outputs.release_exists == 'false'
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add upstream https://github.com/unchihugo/FluentFlyout.git
+          git fetch upstream master
+          git fetch upstream "refs/tags/${TAG}:refs/tags/${TAG}"
+          git checkout master
+          # Safe merge: stop on conflicts instead of overwriting custom EXE workflows.
+          git merge --no-edit upstream/master
+          git push origin HEAD:master
+          git push origin "refs/tags/${TAG}:refs/tags/${TAG}"
+
+      - name: Create fork release with original title and Markdown
+        if: steps.check.outputs.release_exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          title="$(jq -r '.name // .tag_name' "$RUNNER_TEMP/upstream-release.json")"
+          jq -r '.body // ""' "$RUNNER_TEMP/upstream-release.json" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$title" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Dispatch existing EXE build and upload workflow
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          gh workflow run release-exe.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref master \
+            -f "source_ref=$TAG"
